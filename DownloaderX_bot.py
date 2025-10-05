@@ -9,6 +9,8 @@ from yt_dlp.utils import DownloadError, ExtractorError
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from dotenv import load_dotenv
+from keep_alive import keep_alive
+keep_alive()
 
 # Load env
 load_dotenv()
