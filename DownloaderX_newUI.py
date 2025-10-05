@@ -1,4 +1,3 @@
-#V3>> video renaming like (1), (2)... and date metadata override to os date-time
 import os
 import subprocess
 import customtkinter as ctk
@@ -14,7 +13,7 @@ ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
-app.title("DownloaderX by PAVAN 💾🔥 v3")
+app.title("DownloaderX by PAVAN 💾🔥 v4.67")
 app.geometry("800x450")
 app.resizable(False, False)
 app.configure(bg="#FFFFFF")
@@ -22,8 +21,7 @@ app.configure(bg="#FFFFFF")
 link_var = ctk.StringVar()
 output_dir_var = ctk.StringVar(value=os.path.expanduser("~/Documents/Shared Space/DownloaderX"))
 format_var = ctk.StringVar(value="mp4")
-quality_var = ctk.StringVar(value="1080")
-
+quality_var = ctk.IntVar(value=1080)
 
 def set_file_timestamp_now(path):
     now = time.time()
@@ -39,12 +37,10 @@ def set_file_timestamp_now(path):
         if handle != -1:
             class FILETIME(ctypes.Structure):
                 _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
-
             now_windows = int((now + 11644473600) * 10000000)
             ft = FILETIME(now_windows & 0xFFFFFFFF, now_windows >> 32)
             ctypes.windll.kernel32.SetFileTime(handle, ctypes.byref(ft), None, ctypes.byref(ft))
             ctypes.windll.kernel32.CloseHandle(handle)
-
 
 def get_unique_path(base_path):
     if not os.path.exists(base_path):
@@ -57,16 +53,20 @@ def get_unique_path(base_path):
             return new_path
         i += 1
 
-
 def paste_clipboard_link():
     link_var.set(pyperclip.paste().strip())
-
 
 def browse_output_dir():
     folder = filedialog.askdirectory()
     if folder:
         output_dir_var.set(folder)
 
+def update_format(val):
+    format_var.set("mp4" if val == "MP4" else "mp3")
+
+def update_quality_display(val):
+    quality_display.configure(text=f"{int(float(val))}p")
+    quality_var.set(int(float(val)))
 
 def download_media():
     download_button.configure(text="Downloading...", state="disabled")
@@ -75,7 +75,7 @@ def download_media():
     link = link_var.get().strip()
     output_dir = output_dir_var.get().strip()
     file_format = format_var.get()
-    quality = quality_var.get()
+    quality = str(quality_var.get())
 
     if not link:
         status_label.configure(text="❌ Error: Please enter a valid link.")
@@ -124,13 +124,12 @@ def download_media():
                 ]
 
                 subprocess.run(ffmpeg_cmd, check=True)
-                os.remove(input_path)  # Remove raw downloaded file
+                os.remove(input_path)
                 set_file_timestamp_now(output_path)
                 status_label.configure(text=f"✅ Downloaded & converted:\n{output_path}")
             else:
                 output_path = filename.rsplit('.', 1)[0] + ".mp3"
                 if not os.path.exists(output_path):
-                    # fallback if .webm or .m4a or whatever is defaulted
                     for ext in [".mp3", ".webm", ".m4a"]:
                         alt = filename.rsplit('.', 1)[0] + ext
                         if os.path.exists(alt):
@@ -157,6 +156,7 @@ title_label.grid(row=0, column=0, columnspan=3, padx=20, pady=(5, 30), sticky='w
 
 row_opts = {'padx': 10, 'pady': 10, 'sticky': 'ew'}
 
+# Link input
 link_label = ctk.CTkLabel(main_frame, text="🔗 Link:", font=("Ubuntu", 16))
 link_label.grid(row=1, column=0, **row_opts)
 link_entry = ctk.CTkEntry(main_frame, textvariable=link_var, font=("Ubuntu", 16), width=400)
@@ -165,6 +165,7 @@ paste_button = ctk.CTkButton(main_frame, text="📋 Paste", command=paste_clipbo
                              fg_color="#00509E", hover_color="#003D7A", font=("Ubuntu", 16))
 paste_button.grid(row=1, column=2, **row_opts)
 
+# Output dir
 out_label = ctk.CTkLabel(main_frame, text="📁 Output Dir:", font=("Ubuntu", 16))
 out_label.grid(row=2, column=0, **row_opts)
 out_entry = ctk.CTkEntry(main_frame, textvariable=output_dir_var, font=("Ubuntu", 16), width=400)
@@ -173,25 +174,30 @@ browse_button = ctk.CTkButton(main_frame, text="📂 Browse", command=browse_out
                               fg_color="#00509E", hover_color="#003D7A", font=("Ubuntu", 16))
 browse_button.grid(row=2, column=2, **row_opts)
 
+# Format toggle
 format_label = ctk.CTkLabel(main_frame, text="🎬 Format:", font=("Ubuntu", 16))
 format_label.grid(row=3, column=0, sticky='e', padx=(10, 10), pady=10)
 
-format_menu = ctk.CTkComboBox(main_frame, values=["mp4", "mp3"], variable=format_var, font=("Ubuntu", 16), width=100)
-format_menu.grid(row=3, column=1, sticky='w', padx=(0, 10), pady=10)
+format_toggle = ctk.CTkSegmentedButton(main_frame, values=["MP4", "MP3"], command=update_format)
+format_toggle.set("MP4")
+format_toggle.grid(row=3, column=1, sticky='w', padx=(0, 10), pady=(10, 0))
 
-quality_label = ctk.CTkLabel(main_frame, text="📶 Quality:", font=("Ubuntu", 16))
-quality_label.grid(row=3, column=1, sticky='e', padx=(10, 10), pady=10)
+# Quality slider under toggle
+quality_slider = ctk.CTkSlider(main_frame, from_=144, to=1080, number_of_steps=5,
+                               command=update_quality_display, variable=quality_var, width=200)
+quality_slider.grid(row=4, column=1, sticky='w', padx=(20, 0), pady=(0, 5))
 
-quality_menu = ctk.CTkComboBox(main_frame, values=["144", "240", "360", "480", "720", "1080"],
-                               variable=quality_var, font=("Ubuntu", 16), width=100)
-quality_menu.grid(row=3, column=2, sticky='w', pady=10)
+quality_display = ctk.CTkLabel(main_frame, text=f"{quality_var.get()}p", font=("Ubuntu", 14))
+quality_display.grid(row=4, column=1, sticky='e', padx=(0, 20))
 
+# Download button
 download_button = ctk.CTkButton(main_frame, text="⬇️ Download", command=download_media, width=350, height=60,
                                  fg_color="#4CAF50", hover_color="#45a049", font=("Ubuntu", 18, "bold"))
-download_button.grid(row=4, column=0, columnspan=3, pady=20)
+download_button.grid(row=5, column=0, columnspan=3, pady=20)
 
+# Status
 status_label = ctk.CTkLabel(main_frame, text="", text_color="black", wraplength=700, justify="center", font=("Ubuntu", 14))
-status_label.grid(row=5, column=0, columnspan=3, pady=5)
+status_label.grid(row=6, column=0, columnspan=3, pady=5)
 
 main_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
